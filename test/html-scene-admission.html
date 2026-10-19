@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<title>HTML 原生场景拒绝验证</title>
+<style>
+    body { font: 16px sans-serif; margin: 24px; }
+    canvas { display: block; width: 640px; height: 240px; border: 1px solid #999; }
+    .host { background: green; transform-origin: 0 0; }
+    .host input { box-sizing: border-box; width: 220px; height: 32px; }
+    pre { white-space: pre-wrap; }
+</style>
+<h1>HTML 场景拒绝策略（独立原型）</h1>
+<p>使用真实 Storage 排序与普通 Rect brush；HTML 仍由原型绘制，尚未接入公共工厂或 Painter。</p>
+<button id="overlap">重叠并拒绝</button>
+<button id="move">移开并恢复</button>
+<button id="behind">改为背景并恢复</button>
+<button id="hide">隐藏遮挡并恢复</button>
+<button id="verify">运行场景变化检查</button>
+<canvas id="canvas" width="640" height="240" layoutsubtree></canvas>
+<label>画布外 Tab 目标 <input id="outside"></label>
+<pre id="report"></pre>
+<script type="importmap">{"imports":{"tslib":"../node_modules/tslib/tslib.es6.js"}}</script>
+<script type="module" src="html-scene-admission.js"></script>
+</html>

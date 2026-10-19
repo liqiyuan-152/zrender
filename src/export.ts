@@ -24,6 +24,7 @@ export {
 } from './Element';
 
 export {default as Displayable, DisplayableProps} from './graphic/Displayable';
+export {default as HTML, HTMLProps} from './graphic/HTML';
 export {default as Group, GroupProps} from './graphic/Group';
 export {default as Path, PathStyleProps, PathProps, PathStatePropNames, PathState} from './graphic/Path';
 export {default as Image, ImageStyleProps, ImageProps, ImageState} from './graphic/Image';
@@ -74,3 +75,12 @@ export {parseSVG};
 export {default as showDebugDirtyRect} from './debug/showDebugDirtyRect';
 
 export {setPlatformAPI} from './core/platform';
+
+export {
+    checkHTMLCanvasSupport, HTMLCanvasSupportResult, HTMLCanvasFeature
+} from './dom/html/capabilities';
+export {
+    HTMLHostError, HTMLHostErrorCode, HTMLHostErrorContext, createHTMLHostError
+} from './dom/html/diagnostics';
+export {createHTMLHost} from './dom/html/createHTMLHost';
+export {HTMLHost, HTMLHostOptions, HTMLHostLayout, HTMLHostState} from './dom/html/types';

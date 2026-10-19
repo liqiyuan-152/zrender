@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<title>HTML 容器生命周期基础验证</title>
+<style>
+    body { font: 16px sans-serif; margin: 24px; }
+    #mount { min-height: 100px; border: 1px solid #aaa; }
+    pre { white-space: pre-wrap; }
+</style>
+<h1>独立容器生命周期验证</h1>
+<p>此页只验收共享容器基础，不是 zrender HTML 后端，也不是 Canvas overlay 降级实现。</p>
+<button id="verify">运行验证（会创建并释放原生 Input）</button>
+<section id="mount"></section>
+<pre id="report">等待运行</pre>
+<script type="module" src="html-lifecycle-foundation.js"></script>
+</html>

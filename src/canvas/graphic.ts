@@ -16,6 +16,7 @@ import { getLineDash } from './dashStyle';
 import { REDRAW_BIT, SHAPE_CHANGED_BIT } from '../graphic/constants';
 import type IncrementalDisplayable from '../graphic/IncrementalDisplayable';
 import { DEFAULT_FONT } from '../core/platform';
+import HTML from '../graphic/HTML';
 
 
 const pathProxyForDraw = new PathProxy(true);
@@ -723,7 +724,13 @@ export function brush(
         flushPathDrawn(ctx, scope);
     }
 
-    if (el instanceof Path) {
+    if (el instanceof HTML) {
+        ctx.globalAlpha = el.style.opacity == null ? 1 : el.style.opacity;
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.shadowBlur = ctx.shadowOffsetX = ctx.shadowOffsetY = 0;
+        el.__htmlHost.draw(ctx);
+    }
+    else if (el instanceof Path) {
         // PENDING do we need to rebind all style if displayable type changed?
         if (scope.lastDrawType !== DRAW_TYPE_PATH) {
             forceSetStyle = true;

@@ -160,7 +160,13 @@ class ZRender {
             return;
         }
         this.storage.addRoot(el);
-        el.addSelfToZr(this);
+        try {
+            el.addSelfToZr(this);
+        }
+        catch (error) {
+            this.storage.delRoot(el);
+            throw error;
+        }
         this.refresh();
     }
 
@@ -474,7 +480,7 @@ class ZRender {
         }
         const roots = this.storage.getRoots();
         for (let i = 0; i < roots.length; i++) {
-            if (roots[i] instanceof Group) {
+            if (roots[i] instanceof Group || roots[i].type === 'html') {
                 roots[i].removeSelfFromZr(this);
             }
         }

@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<title>公共 HTMLHost M1 验收</title>
+<style>
+    body { font: 16px sans-serif; margin: 24px; }
+    .surface { width: 640px; height: 240px; margin-bottom: 16px; }
+    pre { white-space: pre-wrap; }
+</style>
+<h1>公共 HTMLHost M1 验收</h1>
+<p>直接使用 zrender.createHTMLHost，无框架依赖。先卸载应用子树，再释放 host，最后释放 zr。</p>
+<button id="verify">运行公共生命周期检查</button>
+<div id="mount"></div>
+<label>画布外 Tab 目标 <input id="outside"></label>
+<pre id="report"></pre>
+<script src="../dist/zrender.js"></script>
+<script src="html-host-foundation.js"></script>
+</html>

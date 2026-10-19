@@ -5530,13 +5530,15 @@
         return HandlerDomProxy;
     }(Eventful));
 
-    var dpr = 1;
-    if (env.hasGlobalWindow) {
-        dpr = Math.max(window.devicePixelRatio
-            || (window.screen && window.screen.deviceXDPI / window.screen.logicalXDPI)
-            || 1, 1);
+    function getDevicePixelRatio() {
+        var dpr = 1;
+        if (env.hasGlobalWindow) {
+            dpr = window.devicePixelRatio
+                || (window.screen && window.screen.deviceXDPI / window.screen.logicalXDPI)
+                || 1;
+        }
+        return dpr;
     }
-    var devicePixelRatio = dpr;
     var DARK_MODE_THRESHOLD = 0.4;
     var DARK_LABEL_COLOR = '#333';
     var LIGHT_LABEL_COLOR = '#ccc';
@@ -7296,7 +7298,13 @@
                 return;
             }
             this.storage.addRoot(el);
-            el.addSelfToZr(this);
+            try {
+                el.addSelfToZr(this);
+            }
+            catch (error) {
+                this.storage.delRoot(el);
+                throw error;
+            }
             this.refresh();
         };
         ZRender.prototype.remove = function (el) {
@@ -7425,7 +7433,7 @@
                 return;
             }
             opts = opts || {};
-            this.painter.resize(opts.width, opts.height);
+            this.painter.resize(opts.width, opts.height, opts.devicePixelRatio);
             this.handler.resize();
         };
         ZRender.prototype.clearAnimation = function () {
@@ -7482,7 +7490,7 @@
             }
             var roots = this.storage.getRoots();
             for (var i = 0; i < roots.length; i++) {
-                if (roots[i] instanceof Group) {
+                if (roots[i] instanceof Group || roots[i].type === 'html') {
                     roots[i].removeSelfFromZr(this);
                 }
             }
@@ -8063,8 +8071,9 @@
         PathProxy.prototype.setScale = function (sx, sy, segmentIgnoreThreshold) {
             segmentIgnoreThreshold = segmentIgnoreThreshold || 0;
             if (segmentIgnoreThreshold > 0) {
-                this._ux = mathAbs$1(segmentIgnoreThreshold / devicePixelRatio / sx) || 0;
-                this._uy = mathAbs$1(segmentIgnoreThreshold / devicePixelRatio / sy) || 0;
+                var dpr = this.dpr || 1;
+                this._ux = mathAbs$1(segmentIgnoreThreshold / dpr / sx) || 0;
+                this._uy = mathAbs$1(segmentIgnoreThreshold / dpr / sy) || 0;
             }
         };
         PathProxy.prototype.setDPR = function (dpr) {
@@ -13161,6 +13170,63 @@
         defaultDividePath: split
     });
 
+    (function (HTMLHostErrorCode) {
+        HTMLHostErrorCode["CAPABILITY_MISSING"] = "HTML_CAPABILITY_MISSING";
+        HTMLHostErrorCode["CYCLIC_DEPENDENCY"] = "HTML_CYCLIC_DEPENDENCY";
+        HTMLHostErrorCode["INVALID_TARGET"] = "HTML_INVALID_TARGET";
+        HTMLHostErrorCode["INVALID_OPTIONS"] = "HTML_INVALID_OPTIONS";
+        HTMLHostErrorCode["UNSUPPORTED_EXPORT"] = "UNSUPPORTED_EXPORT";
+        HTMLHostErrorCode["LAYOUT_COMPUTATION_FAILED"] = "HTML_LAYOUT_COMPUTATION_FAILED";
+        HTMLHostErrorCode["UNSUPPORTED_LAYER_MIGRATION"] = "HTML_UNSUPPORTED_LAYER_MIGRATION";
+        HTMLHostErrorCode["UNSUPPORTED_SCENE"] = "HTML_UNSUPPORTED_SCENE";
+        HTMLHostErrorCode["INITIALIZATION_FAILED"] = "HTML_INITIALIZATION_FAILED";
+        HTMLHostErrorCode["INITIALIZATION_TIMEOUT"] = "HTML_INITIALIZATION_TIMEOUT";
+        HTMLHostErrorCode["DISPOSED"] = "HTML_DISPOSED";
+        HTMLHostErrorCode["RENDER_FAILED"] = "HTML_RENDER_FAILED";
+    })(exports.HTMLHostErrorCode || (exports.HTMLHostErrorCode = {}));
+    function createHTMLHostError(code, message, context) {
+        var error = new Error('[' + code + '] ' + message);
+        error.name = 'HTMLHostError';
+        error.code = code;
+        error.context = context;
+        return error;
+    }
+
+    var HTML = (function (_super) {
+        __extends(HTML, _super);
+        function HTML(props) {
+            var _this = _super.call(this, props) || this;
+            _this.width = props && props.width || 0;
+            _this.height = props && props.height || 0;
+            _this.silent = true;
+            return _this;
+        }
+        HTML.prototype.setLayoutSize = function (width, height) {
+            if (this.width !== width || this.height !== height) {
+                this.width = width;
+                this.height = height;
+                this._rect = null;
+                this.markRedraw();
+            }
+        };
+        HTML.prototype.getBoundingRect = function () {
+            return this._rect || (this._rect = new BoundingRect(0, 0, this.width, this.height));
+        };
+        HTML.prototype.addSelfToZr = function (zr) {
+            if (!this.__htmlHost) {
+                throw createHTMLHostError(exports.HTMLHostErrorCode.INVALID_OPTIONS, 'HTML elements must be created with createHTMLHost', { hostId: this.id });
+            }
+            this.__htmlHost.add(zr);
+            _super.prototype.addSelfToZr.call(this, zr);
+        };
+        HTML.prototype.removeSelfFromZr = function (zr) {
+            _super.prototype.removeSelfFromZr.call(this, zr);
+            this.__htmlHost && this.__htmlHost.remove();
+        };
+        return HTML;
+    }(Displayable));
+    HTML.prototype.type = 'html';
+
     var CompoundPath = (function (_super) {
         __extends(CompoundPath, _super);
         function CompoundPath() {
@@ -14540,6 +14606,102 @@
         });
     }
 
+    function checkHTMLCanvasSupport(doc) {
+        doc = doc || (typeof document !== 'undefined' ? document : null);
+        var result = {
+            featuresPresent: false,
+            missingCapabilities: [],
+            features: [],
+            candidate: 'unknown'
+        };
+        var missing = result.missingCapabilities;
+        if (!doc || !doc.createElement) {
+            missing.push('DOM');
+        }
+        else {
+            var canvas = doc.createElement('canvas');
+            var surface = canvas;
+            var element = doc.createElement('div');
+            var context = void 0;
+            try {
+                context = canvas.getContext('2d');
+            }
+            catch (e) {
+            }
+            if (context && typeof context.drawElementImage === 'function') {
+                result.features.push('drawElementImage');
+            }
+            else {
+                missing.push('drawElementImage');
+            }
+            if ('onpaint' in surface && typeof surface.requestPaint === 'function') {
+                result.features.push('paint');
+            }
+            else {
+                missing.push('paint/requestPaint');
+            }
+            if ('inert' in element) {
+                result.features.push('inert');
+            }
+            else {
+                missing.push('inert');
+            }
+            if ('content' in surface) {
+                result.candidate = 'drawable';
+            }
+            else if ('layoutSubtree' in surface) {
+                result.candidate = 'layout-subtree';
+            }
+            else {
+                missing.push('content/layoutSubtree');
+            }
+            if (typeof surface.clearElementGeometry !== 'function') {
+                missing.push('clearElementGeometry');
+            }
+            if (typeof surface.updateElementGeometry !== 'function') {
+                missing.push('updateElementGeometry');
+            }
+            var view = doc.defaultView;
+            result.userAgent = view && view.navigator && view.navigator.userAgent;
+        }
+        result.featuresPresent = missing.length === 0;
+        if (!result.featuresPresent) {
+            result.reason = 'Missing HTML canvas features: ' + missing.join(', ');
+        }
+        return result;
+    }
+
+    function validateHTMLHostLayout(config) {
+        if (!config || typeof config.width !== 'number' || !isFinite(config.width) || config.width < 0
+            || (config.height != null && (typeof config.height !== 'number'
+                || !isFinite(config.height) || config.height < 0))
+            || (config.x != null && (typeof config.x !== 'number' || !isFinite(config.x)))
+            || (config.y != null && (typeof config.y !== 'number' || !isFinite(config.y)))) {
+            throw createHTMLHostError(exports.HTMLHostErrorCode.INVALID_OPTIONS, 'HTML host requires a finite non-negative width, optional height and finite position');
+        }
+        if ('layout' in config) {
+            throw createHTMLHostError(exports.HTMLHostErrorCode.UNSUPPORTED_SCENE, 'Target layout binding is not implemented in M1');
+        }
+    }
+    function createHTMLHost(zr, options) {
+        validateHTMLHostLayout(options);
+        var order = [options.zlevel, options.z, options.z2];
+        for (var i = 0; i < order.length; i++) {
+            if (order[i] != null && (typeof order[i] !== 'number' || !isFinite(order[i]))) {
+                throw createHTMLHostError(exports.HTMLHostErrorCode.INVALID_OPTIONS, 'HTML host stacking values must be finite numbers');
+            }
+        }
+        var timeout = options.initializationTimeoutMs;
+        if (timeout != null && (typeof timeout !== 'number' || !isFinite(timeout) || timeout <= 0)) {
+            throw createHTMLHostError(exports.HTMLHostErrorCode.INVALID_OPTIONS, 'initializationTimeoutMs must be a finite positive number');
+        }
+        var painter = zr && zr.painter;
+        if (!painter || !painter.createHTMLHost) {
+            throw createHTMLHostError(exports.HTMLHostErrorCode.CAPABILITY_MISSING, 'The current renderer has no validated HTML host backend');
+        }
+        return painter.createHTMLHost(zr, options);
+    }
+
     function isSafeNum(num) {
         return isFinite(num);
     }
@@ -15117,7 +15279,13 @@
         else if (!canBatchPath) {
             flushPathDrawn(ctx, scope);
         }
-        if (el instanceof Path) {
+        if (el instanceof HTML) {
+            ctx.globalAlpha = el.style.opacity == null ? 1 : el.style.opacity;
+            ctx.globalCompositeOperation = 'source-over';
+            ctx.shadowBlur = ctx.shadowOffsetX = ctx.shadowOffsetY = 0;
+            el.__htmlHost.draw(ctx);
+        }
+        else if (el instanceof Path) {
             if (scope.lastDrawType !== DRAW_TYPE_PATH) {
                 forceSetStyle = true;
                 scope.lastDrawType = DRAW_TYPE_PATH;
@@ -15253,7 +15421,7 @@
             _this.__firstTimePaint = true;
             _this.__prevIdx = { startIdx: 0, endIdx: 0 };
             var dom;
-            dpr = dpr || devicePixelRatio;
+            dpr = dpr || 1;
             if (typeof id === 'string') {
                 dom = createDom(id, painter, dpr);
             }
@@ -15409,8 +15577,22 @@
         Layer.prototype.debugGetPaintRects = function () {
             return (this._paintRects || []).slice();
         };
-        Layer.prototype.resize = function (width, height) {
-            var dpr = this.dpr;
+        Layer.prototype.updateDpr = function (dpr) {
+            if (dpr != null && dpr !== this.dpr) {
+                this.dpr = dpr;
+                if (this.ctx) {
+                    this.ctx.dpr = dpr;
+                }
+                if (this.ctxBack) {
+                    this.ctxBack.dpr = dpr;
+                }
+                return true;
+            }
+            return false;
+        };
+        Layer.prototype.resize = function (width, height, dpr) {
+            this.updateDpr(dpr);
+            dpr = this.dpr;
             var dom = this.dom;
             var domStyle = dom.style;
             var domBack = this.domBack;
@@ -15499,6 +15681,671 @@
         return Layer;
     }(Eventful));
 
+    function validateSize(width, height) {
+        if (typeof width !== 'number' || !isFinite(width) || width < 0
+            || (height != null && (typeof height !== 'number' || !isFinite(height) || height < 0))) {
+            throw createHTMLHostError(exports.HTMLHostErrorCode.INVALID_OPTIONS, 'HTML host dimensions must be finite non-negative numbers', { failedOperation: 'setSize' });
+        }
+    }
+    function createHTMLHostLifecycle(parent, options) {
+        validateSize(options.width, options.height);
+        var doc = parent.ownerDocument;
+        var element = doc.createElement('div');
+        if (!('inert' in element)) {
+            throw createHTMLHostError(exports.HTMLHostErrorCode.CAPABILITY_MISSING, 'Native inert is required for HTML hosts', { failedOperation: 'create', missingCapabilities: ['inert'] });
+        }
+        var view = doc.defaultView;
+        var Observer = view && view.ResizeObserver;
+        if (options.height == null && !Observer) {
+            throw createHTMLHostError(exports.HTMLHostErrorCode.CAPABILITY_MISSING, 'ResizeObserver is required for automatic HTML height', { failedOperation: 'create' });
+        }
+        var observer;
+        var generation = 0;
+        var visible = true;
+        var explicitHeight = options.height;
+        var width = options.width;
+        var height = explicitHeight == null ? 0 : explicitHeight;
+        var attached = false;
+        var disposed = false;
+        element.style.boxSizing = 'border-box';
+        element.style.width = width + 'px';
+        element.style.height = explicitHeight == null ? 'auto' : height + 'px';
+        function invalidate() {
+            if (!disposed && attached && options.onInvalidate) {
+                options.onInvalidate();
+            }
+        }
+        function syncInteraction() {
+            lifecycle.width = width;
+            lifecycle.height = height;
+            lifecycle.attached = attached;
+            lifecycle.disposed = disposed;
+            var active = !disposed && attached && visible && width > 0 && height > 0;
+            if (active) {
+                element.removeAttribute('inert');
+                element.style.visibility = '';
+            }
+            else {
+                element.setAttribute('inert', '');
+                element.style.visibility = 'hidden';
+                var focused = doc.activeElement;
+                if (focused && element.contains(focused) && focused.blur) {
+                    focused.blur();
+                }
+            }
+        }
+        function notifyResize() {
+            if (disposed) {
+                return;
+            }
+            if (options.onResize) {
+                options.onResize(width, height);
+            }
+            invalidate();
+        }
+        function stopObserving() {
+            generation++;
+            if (observer) {
+                observer.disconnect();
+                observer = null;
+            }
+        }
+        function startObserving() {
+            if (explicitHeight != null || !Observer || !attached || disposed) {
+                return;
+            }
+            var observedGeneration = ++generation;
+            observer = new Observer(function (entries) {
+                if (disposed || !attached || observedGeneration !== generation || explicitHeight != null) {
+                    return;
+                }
+                for (var i = 0; i < entries.length; i++) {
+                    if (disposed || !attached || observedGeneration !== generation || explicitHeight != null) {
+                        return;
+                    }
+                    var entry = entries[i];
+                    if (entry.target !== element) {
+                        continue;
+                    }
+                    var box = entry.borderBoxSize;
+                    var borderBox = box && (box[0] || box);
+                    var style = view.getComputedStyle(element);
+                    var vertical = /^(vertical|sideways)-/.test(style.writingMode);
+                    var nextHeight = borderBox && (vertical ? borderBox.inlineSize : borderBox.blockSize);
+                    if (nextHeight == null) {
+                        nextHeight = entry.contentRect.height
+                            + (parseFloat(style.paddingTop) || 0) + (parseFloat(style.paddingBottom) || 0)
+                            + (parseFloat(style.borderTopWidth) || 0) + (parseFloat(style.borderBottomWidth) || 0);
+                    }
+                    if (!isFinite(nextHeight) || nextHeight < 0 || height === nextHeight) {
+                        continue;
+                    }
+                    height = nextHeight;
+                    syncInteraction();
+                    if (!disposed && attached && observedGeneration === generation && explicitHeight == null) {
+                        notifyResize();
+                    }
+                }
+            });
+            try {
+                observer.observe(element, { box: 'border-box' });
+            }
+            catch (error) {
+                stopObserving();
+                throw error;
+            }
+        }
+        var lifecycle = {
+            element: element,
+            width: width,
+            height: height,
+            attached: attached,
+            disposed: disposed,
+            attach: function () {
+                if (disposed) {
+                    throw createHTMLHostError(exports.HTMLHostErrorCode.DISPOSED, 'Disposed HTML hosts cannot be reattached', { failedOperation: 'attach' });
+                }
+                if (attached) {
+                    return;
+                }
+                parent.appendChild(element);
+                attached = true;
+                try {
+                    startObserving();
+                    syncInteraction();
+                }
+                catch (error) {
+                    lifecycle.detach();
+                    throw error;
+                }
+                invalidate();
+            },
+            detach: function () {
+                if (!attached || disposed) {
+                    return;
+                }
+                attached = false;
+                stopObserving();
+                var detachedGeneration = generation;
+                if (explicitHeight == null) {
+                    height = 0;
+                }
+                syncInteraction();
+                if (!disposed && !attached && generation === detachedGeneration && element.parentNode) {
+                    element.parentNode.removeChild(element);
+                }
+            },
+            setVisible: function (value) {
+                if (disposed || visible === value) {
+                    return;
+                }
+                visible = value;
+                syncInteraction();
+                invalidate();
+            },
+            setSize: function (nextWidth, nextExplicitHeight) {
+                if (disposed) {
+                    throw createHTMLHostError(exports.HTMLHostErrorCode.DISPOSED, 'Disposed HTML hosts cannot be resized', { failedOperation: 'setSize' });
+                }
+                validateSize(nextWidth, nextExplicitHeight);
+                if (nextExplicitHeight == null && !Observer) {
+                    throw createHTMLHostError(exports.HTMLHostErrorCode.CAPABILITY_MISSING, 'ResizeObserver is required for automatic HTML height', { failedOperation: 'setSize' });
+                }
+                if (width === nextWidth && explicitHeight === nextExplicitHeight) {
+                    return;
+                }
+                var modeChanged = explicitHeight !== nextExplicitHeight;
+                var previousWidth = width;
+                var previousHeight = height;
+                var previousExplicitHeight = explicitHeight;
+                width = nextWidth;
+                explicitHeight = nextExplicitHeight;
+                if (element.style.width !== width + 'px') {
+                    element.style.width = width + 'px';
+                }
+                element.style.height = explicitHeight == null ? 'auto' : explicitHeight + 'px';
+                height = explicitHeight == null ? 0 : explicitHeight;
+                if (modeChanged) {
+                    stopObserving();
+                    try {
+                        startObserving();
+                    }
+                    catch (error) {
+                        width = previousWidth;
+                        height = previousHeight;
+                        explicitHeight = previousExplicitHeight;
+                        element.style.width = width + 'px';
+                        element.style.height = explicitHeight == null ? 'auto' : explicitHeight + 'px';
+                        syncInteraction();
+                        throw error;
+                    }
+                }
+                syncInteraction();
+                if (!disposed) {
+                    notifyResize();
+                }
+            },
+            dispose: function () {
+                if (disposed) {
+                    return;
+                }
+                disposed = true;
+                attached = false;
+                stopObserving();
+                syncInteraction();
+                if (element.parentNode) {
+                    element.parentNode.removeChild(element);
+                }
+            }
+        };
+        syncInteraction();
+        return lifecycle;
+    }
+
+    function reject(host, reason, target) {
+        throw createHTMLHostError(exports.HTMLHostErrorCode.UNSUPPORTED_SCENE, reason, {
+            hostId: host.id,
+            targetId: target && target.id,
+            failedOperation: 'validateScene'
+        });
+    }
+    function validRect(rect) {
+        return isFinite(rect.x) && isFinite(rect.y) && isFinite(rect.width) && isFinite(rect.height)
+            && rect.width >= 0 && rect.height >= 0;
+    }
+    function validateHTMLCanvasScene(host, displayList) {
+        var hostIndex = -1;
+        for (var i = 0; i < displayList.length; i++) {
+            if (displayList[i] === host) {
+                hostIndex = i;
+                break;
+            }
+        }
+        if (hostIndex < 0) {
+            reject(host, 'HTML host must belong to the current display list');
+        }
+        var hostRect = host.getPaintRect();
+        if (!validRect(hostRect)) {
+            reject(host, 'HTML host paint bounds must be finite');
+        }
+        for (var i = 0; i < displayList.length; i++) {
+            var item = displayList[i];
+            if (item.ignore || item.invisible || item.style.opacity === 0) {
+                continue;
+            }
+            if (item.zlevel !== host.zlevel || item.incremental || item.__inHover
+                || (item.__clipPaths && item.__clipPaths.length)) {
+                reject(host, 'Native HTML scene requires one normal layer without hover, incremental or clipping', item);
+            }
+            if (item.style.blend && item.style.blend !== 'source-over') {
+                reject(host, 'Native HTML scene requires source-over compositing', item);
+            }
+            if (item.beforeBrush !== Displayable.prototype.beforeBrush
+                || item.afterBrush !== Displayable.prototype.afterBrush) {
+                reject(host, 'Custom brush callbacks are unsupported in native HTML scenes', item);
+            }
+            if (i <= hostIndex) {
+                continue;
+            }
+            var rect = item.getPaintRect();
+            if (!validRect(rect)) {
+                reject(host, 'Foreground paint bounds must be finite for native HTML', item);
+            }
+            if (hostRect.intersect(rect)) {
+                reject(host, 'Foreground paint bounds overlap native HTML; native occlusion hit testing is unsupported', item);
+            }
+        }
+    }
+
+    function verifyHTMLCanvasProfile(navigator) {
+        var data = navigator.userAgentData;
+        var error = createHTMLHostError(exports.HTMLHostErrorCode.CAPABILITY_MISSING, 'Native HTML M1 is validated only on Windows Google Chrome 155.0.8059.85 with canvas-draw-element enabled');
+        if (!data || data.platform !== 'Windows' || typeof data.getHighEntropyValues !== 'function') {
+            return Promise.reject(error);
+        }
+        return data.getHighEntropyValues(['fullVersionList']).then(function (result) {
+            var versions = result.fullVersionList || [];
+            for (var i = 0; i < versions.length; i++) {
+                if (versions[i].brand === 'Google Chrome' && versions[i].version === '155.0.8059.85') {
+                    return;
+                }
+            }
+            throw error;
+        });
+    }
+
+    var canvasOwners = [];
+    function own(canvas, delta) {
+        for (var i = 0; i < canvasOwners.length; i++) {
+            var entry = canvasOwners[i];
+            if (entry.canvas === canvas) {
+                entry.count += delta;
+                if (!entry.count) {
+                    if (!entry.hadAttribute) {
+                        canvas.removeAttribute('layoutsubtree');
+                    }
+                    canvasOwners.splice(i, 1);
+                }
+                return;
+            }
+        }
+        if (delta > 0) {
+            canvasOwners.push({ canvas: canvas, count: 1, hadAttribute: canvas.hasAttribute('layoutsubtree') });
+            canvas.setAttribute('layoutsubtree', '');
+        }
+    }
+    var NativeHTMLCanvas = (function () {
+        function NativeHTMLCanvas(canvas, element) {
+            this.snapshotReady = false;
+            this._disposed = false;
+            this._visible = false;
+            this._canvas = canvas;
+            this._element = element;
+            element.setAttribute('drawable', '');
+            element.style.transformOrigin = '0 0';
+            own(canvas, 1);
+        }
+        NativeHTMLCanvas.prototype.start = function (ready, painted, failed) {
+            var _this = this;
+            var canvas = this._canvas;
+            var probe = this._probe = canvas.ownerDocument.createElement('div');
+            probe.setAttribute('drawable', '');
+            probe.setAttribute('inert', '');
+            probe.style.cssText = 'width:1px;height:1px;background:green;transform-origin:0 0';
+            this._paint = function () {
+                if (_this._disposed) {
+                    return;
+                }
+                try {
+                    if (_this._probe) {
+                        var ctx = canvas.getContext('2d');
+                        ctx.save();
+                        try {
+                            ctx.setTransform(1, 0, 0, 1, 0, 0);
+                            var matrix = ctx.drawElementImage(probe, -2, -2);
+                            if (!matrix || typeof matrix.toFloat64Array !== 'function') {
+                                throw createHTMLHostError(exports.HTMLHostErrorCode.CAPABILITY_MISSING, 'Native HTML backend requires the verified matrix-returning legacy interface');
+                            }
+                            probe.style.transform = matrix.toString();
+                            canvas.updateElementGeometry(probe, { canvasTransform: matrix });
+                        }
+                        finally {
+                            ctx.restore();
+                        }
+                        canvas.clearElementGeometry(probe);
+                        probe.parentNode.removeChild(probe);
+                        _this._probe = null;
+                        verifyHTMLCanvasProfile(canvas.ownerDocument.defaultView.navigator).then(function () {
+                            if (!_this._disposed) {
+                                ready();
+                            }
+                        })["catch"](failed);
+                        return;
+                    }
+                    if (_this._visible) {
+                        _this.snapshotReady = true;
+                        painted();
+                    }
+                }
+                catch (error) {
+                    failed(error);
+                }
+            };
+            canvas.addEventListener('paint', this._paint);
+            canvas.appendChild(probe);
+            canvas.requestPaint();
+        };
+        NativeHTMLCanvas.prototype.setVisible = function (visible) {
+            if (this._visible !== visible) {
+                this._visible = visible;
+                this.invalidate();
+            }
+        };
+        NativeHTMLCanvas.prototype.invalidate = function () {
+            this.snapshotReady = false;
+            this.clear();
+            if (!this._disposed && this._visible) {
+                this._canvas.requestPaint();
+            }
+        };
+        NativeHTMLCanvas.prototype.clear = function () {
+            if (!this._disposed) {
+                this._canvas.clearElementGeometry(this._element);
+            }
+        };
+        NativeHTMLCanvas.prototype.draw = function (ctx) {
+            if (this._disposed || !this._visible || !this.snapshotReady) {
+                return;
+            }
+            var dpr = ctx.dpr || 1;
+            var matrix;
+            ctx.save();
+            try {
+                ctx.scale(1 / dpr, 1 / dpr);
+                matrix = ctx.drawElementImage(this._element, 0, 0);
+            }
+            finally {
+                ctx.restore();
+            }
+            var transform = matrix.toString();
+            if (this._element.style.transform !== transform) {
+                this._element.style.transform = transform;
+            }
+            this._canvas.updateElementGeometry(this._element, { canvasTransform: matrix });
+        };
+        NativeHTMLCanvas.prototype.dispose = function () {
+            if (this._disposed) {
+                return;
+            }
+            this.clear();
+            this._disposed = true;
+            this._canvas.removeEventListener('paint', this._paint);
+            if (this._probe && this._probe.parentNode) {
+                this._probe.parentNode.removeChild(this._probe);
+            }
+            this._probe = null;
+            own(this._canvas, -1);
+            this._paint = null;
+            this._element = null;
+            this._canvas = null;
+            this.snapshotReady = false;
+        };
+        return NativeHTMLCanvas;
+    }());
+
+    function call(callback, value) {
+        if (callback) {
+            try {
+                callback(value);
+            }
+            catch (error) {
+                if (typeof console !== 'undefined') {
+                    console.error('HTML host callback failed', error);
+                }
+            }
+        }
+    }
+    function createCanvasHTMLHost(painter, zr, options, registry) {
+        var canvas = painter.getHTMLHostCanvas(options.zlevel || 0);
+        var support = checkHTMLCanvasSupport(canvas.ownerDocument);
+        if (!support.featuresPresent || support.candidate !== 'layout-subtree' || typeof Promise === 'undefined') {
+            throw createHTMLHostError(exports.HTMLHostErrorCode.CAPABILITY_MISSING, 'HTML host requires native inert, Promise and the validated layoutsubtree profile', { missingCapabilities: support.missingCapabilities });
+        }
+        var sceneElement = new HTML({ x: options.x || 0, y: options.y || 0,
+            width: options.width, height: options.height || 0,
+            zlevel: options.zlevel || 0, z: options.z || 0, z2: options.z2 || 0 });
+        var originalZlevel = sceneElement.zlevel;
+        var native;
+        var disposed = false;
+        var initialized = false;
+        var settled = false;
+        var fault = '';
+        var resolveReady;
+        var rejectReady;
+        var timer;
+        var ready = new Promise(function (resolve, reject) {
+            resolveReady = resolve;
+            rejectReady = reject;
+        });
+        var lifecycle = createHTMLHostLifecycle(canvas, {
+            width: options.width, height: options.height,
+            onResize: function (width, height) {
+                if (disposed) {
+                    return;
+                }
+                sceneElement.setLayoutSize(width, height);
+                native && native.invalidate();
+            },
+            onInvalidate: function () {
+                if (!disposed) {
+                    sceneElement.markRedraw();
+                }
+            }
+        });
+        lifecycle.setVisible(false);
+        lifecycle.element.style.contain = 'paint';
+        lifecycle.element.style.overflow = 'hidden';
+        native = new NativeHTMLCanvas(canvas, lifecycle.element);
+        var view = canvas.ownerDocument.defaultView;
+        function state(value) {
+            if (host.state !== value) {
+                host.state = value;
+                call(options.onStateChange, value);
+            }
+        }
+        function settle(error) {
+            if (settled) {
+                return;
+            }
+            settled = true;
+            view.clearTimeout(timer);
+            error ? rejectReady(error) : resolveReady();
+        }
+        function pause() {
+            native.setVisible(false);
+            native.clear();
+            lifecycle.setVisible(false);
+            if (!disposed) {
+                state(initialized ? 'suspended' : 'pending');
+            }
+        }
+        function fail(error) {
+            if (disposed) {
+                return;
+            }
+            var failure = error && error.code ? error
+                : createHTMLHostError(initialized ? exports.HTMLHostErrorCode.RENDER_FAILED
+                    : exports.HTMLHostErrorCode.INITIALIZATION_FAILED, String(error), { hostId: sceneElement.id });
+            if (!settled) {
+                settle(failure);
+                host.dispose();
+                return;
+            }
+            pause();
+            if (disposed) {
+                return;
+            }
+            var key = failure.code + ':' + (failure.context && failure.context.targetId) + ':' + failure.message;
+            if (fault !== key) {
+                fault = key;
+                call(options.onError, failure);
+            }
+        }
+        var host = {
+            element: lifecycle.element,
+            sceneElement: sceneElement,
+            state: 'pending',
+            ready: ready,
+            pause: pause,
+            prepare: function (list) {
+                if (disposed) {
+                    return;
+                }
+                if (indexOf(list, sceneElement) < 0
+                    || sceneElement.width <= 0 || sceneElement.height <= 0
+                    || !sceneElement.shouldBePainted(painter.getWidth(), painter.getHeight(), true, true)) {
+                    pause();
+                    return;
+                }
+                try {
+                    if (sceneElement.zlevel !== originalZlevel
+                        || painter.getHTMLHostCanvas(originalZlevel) !== canvas) {
+                        throw createHTMLHostError(exports.HTMLHostErrorCode.UNSUPPORTED_LAYER_MIGRATION, 'HTML Canvas ownership is fixed for the lifetime of the host');
+                    }
+                    validateHTMLCanvasScene(sceneElement, list);
+                    var style = view.getComputedStyle(lifecycle.element);
+                    if (style.contain.indexOf('paint') < 0 || style.overflow !== 'hidden'
+                        || Math.abs(parseFloat(style.width) - lifecycle.width) > 0.001
+                        || sceneElement.style.shadowBlur || sceneElement.style.shadowOffsetX
+                        || sceneElement.style.shadowOffsetY) {
+                        throw createHTMLHostError(exports.HTMLHostErrorCode.UNSUPPORTED_SCENE, 'HTML hosts require their owned width/paint containment and do not support scene shadows');
+                    }
+                    if (!initialized) {
+                        return;
+                    }
+                    var visible = sceneElement.width > 0 && sceneElement.height > 0;
+                    lifecycle.setVisible(visible);
+                    if (disposed) {
+                        return;
+                    }
+                    native.setVisible(visible);
+                    fault = '';
+                    state(visible ? 'active' : 'suspended');
+                }
+                catch (error) {
+                    fail(error);
+                }
+            },
+            updateLayout: function (config) {
+                if (disposed) {
+                    throw createHTMLHostError(exports.HTMLHostErrorCode.DISPOSED, 'Disposed HTML hosts cannot be updated');
+                }
+                validateHTMLHostLayout(config);
+                lifecycle.setSize(config.width, config.height);
+                if (disposed) {
+                    return;
+                }
+                sceneElement.setLayoutSize(lifecycle.width, lifecycle.height);
+                sceneElement.attr({ x: config.x == null ? sceneElement.x : config.x,
+                    y: config.y == null ? sceneElement.y : config.y });
+                native.invalidate();
+            },
+            dispose: function () {
+                if (disposed) {
+                    return;
+                }
+                disposed = true;
+                settle(createHTMLHostError(exports.HTMLHostErrorCode.DISPOSED, 'HTML host disposed during initialization'));
+                native.dispose();
+                lifecycle.dispose();
+                var idx = indexOf(registry, host);
+                if (idx >= 0) {
+                    registry.splice(idx, 1);
+                }
+                if (sceneElement.parent) {
+                    sceneElement.parent.remove(sceneElement);
+                }
+                else if (sceneElement.__zr && zr.storage) {
+                    zr.remove(sceneElement);
+                }
+                state('disposed');
+            }
+        };
+        sceneElement.__htmlHost = {
+            add: function (owner) {
+                if (disposed || owner !== zr) {
+                    throw createHTMLHostError(disposed ? exports.HTMLHostErrorCode.DISPOSED : exports.HTMLHostErrorCode.INVALID_TARGET, 'HTML host can only be attached to its original live zrender instance');
+                }
+                lifecycle.attach();
+                native.invalidate();
+            },
+            remove: function () {
+                pause();
+                if (!disposed) {
+                    lifecycle.detach();
+                }
+            },
+            draw: function (ctx) {
+                if (disposed || host.state !== 'active') {
+                    return;
+                }
+                try {
+                    native.draw(ctx);
+                }
+                catch (error) {
+                    fail(error);
+                }
+            }
+        };
+        registry.push(host);
+        try {
+            zr.add(sceneElement);
+            timer = view.setTimeout(function () { return fail(createHTMLHostError(exports.HTMLHostErrorCode.INITIALIZATION_TIMEOUT, 'HTML host initialization timed out; background scheduling may delay paint')); }, options.initializationTimeoutMs == null ? 10000 : options.initializationTimeoutMs);
+            native.start(function () {
+                if (disposed) {
+                    return;
+                }
+                initialized = true;
+                host.prepare(zr.storage.getDisplayList(true));
+                if (disposed) {
+                    return;
+                }
+                settle();
+                sceneElement.markRedraw();
+            }, function () {
+                if (!disposed) {
+                    sceneElement.markRedraw();
+                }
+            }, fail);
+        }
+        catch (error) {
+            ready["catch"](function () { });
+            host.dispose();
+            throw error;
+        }
+        return host;
+    }
+
     var HOVER_LAYER_ZLEVEL = 1e5;
     var CANVAS_ZLEVEL = 314159;
     var HOVER_LAYER_DIRTY_NO = undefined;
@@ -15585,6 +16432,8 @@
     var CanvasPainter = (function () {
         function CanvasPainter(root, storage, opts, id) {
             this.type = 'canvas';
+            this._htmlHosts = [];
+            this._htmlHostDisposing = false;
             this._prevDisplayList = [];
             this._layerConfig = {};
             this._needsManuallyCompositing = false;
@@ -15596,7 +16445,7 @@
             var singleCanvas = !root.nodeName
                 || root.nodeName.toUpperCase() === 'CANVAS';
             this._opts = opts = extend({}, opts || {});
-            this.dpr = opts.devicePixelRatio || devicePixelRatio;
+            this.dpr = opts.devicePixelRatio || getDevicePixelRatio();
             this._singleCanvas = singleCanvas;
             this.root = root;
             var rootStyle = root.style;
@@ -15622,7 +16471,6 @@
                 if (opts.height != null) {
                     height = opts.height;
                 }
-                this.dpr = opts.devicePixelRatio || 1;
                 rootCanvas.width = width * this.dpr;
                 rootCanvas.height = height * this.dpr;
                 this._width = width;
@@ -15671,6 +16519,10 @@
                 return this;
             }
             var list = this.storage.getDisplayList(true);
+            var htmlHosts = this._htmlHosts.slice();
+            for (var i = 0; i < htmlHosts.length; i++) {
+                htmlHosts[i].prepare(list);
+            }
             this._updateLayerStatus(list, opt.paintAll);
             this._redrawId = Math.random();
             var prevList = this._prevDisplayList;
@@ -15882,6 +16734,20 @@
         CanvasPainter.prototype.getLayer = function (zlevel, virtual) {
             return this._ensureLayer(zlevel, 0, virtual);
         };
+        CanvasPainter.prototype.getHTMLHostCanvas = function (zlevel) {
+            if (this._htmlHostDisposing) {
+                throw createHTMLHostError(exports.HTMLHostErrorCode.DISPOSED, 'Painter is disposing');
+            }
+            var layer = this.getLayer(zlevel);
+            if (this._opts.useDirtyRect || this._needsManuallyCompositing || layer.virtual
+                || !layer.__builtin__ || layer.motionBlur) {
+                throw createHTMLHostError(exports.HTMLHostErrorCode.UNSUPPORTED_SCENE, 'M1 native HTML requires a normal Canvas layer without dirty rectangles or motion blur');
+            }
+            return layer.dom;
+        };
+        CanvasPainter.prototype.createHTMLHost = function (zr, options) {
+            return createCanvasHTMLHost(this, zr, options, this._htmlHosts);
+        };
         CanvasPainter.prototype._ensureLayer = function (zlevel, zlevel2, virtual) {
             zlevel2 = zlevel2 || 0;
             var singleCanvas = this._singleCanvas;
@@ -16091,6 +16957,10 @@
             }, EACH_LAYER_BUILTIN_NOT_HOVER);
         };
         CanvasPainter.prototype.clear = function () {
+            var hosts = this._htmlHosts.slice();
+            for (var i = 0; i < hosts.length; i++) {
+                hosts[i].pause();
+            }
             eachLayer(this._i, function (layer) {
                 layer.clear();
                 resetLayerDrawCursors(layer);
@@ -16136,14 +17006,20 @@
                 }
             }
         };
-        CanvasPainter.prototype.resize = function (width, height) {
+        CanvasPainter.prototype.resize = function (width, height, devicePixelRatio) {
+            var _this = this;
+            var newDpr = devicePixelRatio || getDevicePixelRatio();
+            var dprChanged = newDpr !== this.dpr;
+            if (dprChanged) {
+                this.dpr = newDpr;
+            }
             if (!this._domRoot.style) {
                 if (width == null || height == null) {
                     return;
                 }
                 this._width = width;
                 this._height = height;
-                this._ensureLayer(CANVAS_ZLEVEL).resize(width, height);
+                this._ensureLayer(CANVAS_ZLEVEL).resize(width, height, this.dpr);
             }
             else {
                 var domRoot = this._domRoot;
@@ -16155,11 +17031,11 @@
                 width = getSize(root, 0, opts);
                 height = getSize(root, 1, opts);
                 domRoot.style.display = '';
-                if (this._width !== width || height !== this._height) {
+                if (this._width !== width || height !== this._height || dprChanged) {
                     domRoot.style.width = width + 'px';
                     domRoot.style.height = height + 'px';
                     eachLayer(this._i, function (layer) {
-                        layer.resize(width, height);
+                        layer.resize(width, height, _this.dpr);
                     });
                     this.refresh({ paintAll: true });
                 }
@@ -16176,6 +17052,10 @@
             });
         };
         CanvasPainter.prototype.dispose = function () {
+            this._htmlHostDisposing = true;
+            while (this._htmlHosts.length) {
+                this._htmlHosts[this._htmlHosts.length - 1].dispose();
+            }
             this.root.innerHTML = '';
             this.root =
                 this.storage =
@@ -16183,6 +17063,17 @@
                         this._i = null;
         };
         CanvasPainter.prototype.getRenderedCanvas = function (opts) {
+            var hasHTML = false;
+            var roots = this.storage.getRoots();
+            var inspect = function (el) {
+                hasHTML = hasHTML || el.type === 'html';
+            };
+            for (var i = 0; i < roots.length; i++) {
+                roots[i].traverse(inspect);
+            }
+            if (hasHTML) {
+                throw createHTMLHostError(exports.HTMLHostErrorCode.UNSUPPORTED_EXPORT, 'Exporting a scene containing HTML is unsupported');
+            }
             opts = opts || {};
             if (this._singleCanvas && !this._compositeManually) {
                 return this._i.layers[CANVAS_ZLEVEL][0].dom;
@@ -17847,6 +18738,7 @@
     exports.Ellipse = Ellipse;
     exports.EllipseShape = EllipseShape;
     exports.Group = Group;
+    exports.HTML = HTML;
     exports.Heart = Heart;
     exports.HeartShape = HeartShape;
     exports.Image = ZRImage;
@@ -17879,7 +18771,10 @@
     exports.Text = ZRText;
     exports.Trochoid = Trochoid;
     exports.TrochoidShape = TrochoidShape;
+    exports.checkHTMLCanvasSupport = checkHTMLCanvasSupport;
     exports.color = color;
+    exports.createHTMLHost = createHTMLHost;
+    exports.createHTMLHostError = createHTMLHostError;
     exports.dispose = dispose;
     exports.disposeAll = disposeAll;
     exports.getElementSSRData = getElementSSRData;

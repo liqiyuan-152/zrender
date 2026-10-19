@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<title>HTML-in-Canvas M1 能力验证</title>
+<style>
+    body { font: 16px sans-serif; margin: 24px; }
+    canvas { display: block; border: 1px solid #999; width: 640px; height: 240px; }
+    .host { width: 240px; height: 60px; background: rgb(0,128,0); transform-origin: 0 0; }
+    input { box-sizing: border-box; width: 220px; height: 32px; }
+    pre { white-space: pre-wrap; }
+</style>
+<h1>M1 原生能力验证（独立原型）</h1>
+<p>此页不代表 createHTMLHost 或 zrender HTML 后端已经实现。红色遮挡时点击原输入位置，检查事件记录。</p>
+<p>
+    <button id="cover">切换普通 Canvas 图元遮挡</button>
+    <button id="move">移动绘制位置</button>
+    <button id="pause">切换 inert 暂停</button>
+    <button id="remove">移出/重新加入原 DOM</button>
+    <button id="stop">清理原型</button>
+</p>
+<canvas id="canvas" width="640" height="240"></canvas>
+<p><label>画布外 Tab 目标 <input id="outside"></label></p>
+<pre id="report"></pre>
+<script src="../dist/zrender.js"></script>
+<script src="html-capability.js"></script>
+</html>

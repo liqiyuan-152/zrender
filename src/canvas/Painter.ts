@@ -17,6 +17,10 @@ import BoundingRect from '../core/BoundingRect';
 import { REDRAW_BIT } from '../graphic/constants';
 import { getSize } from './helper';
 import { platformApi } from '../core/platform';
+import { createCanvasHTMLHost, CanvasHTMLHost } from './html/host';
+import { HTMLHostOptions } from '../dom/html/types';
+import { ZRenderType } from '../zrender';
+import { createHTMLHostError, HTMLHostErrorCode } from '../dom/html/diagnostics';
 
 
 const HOVER_LAYER_ZLEVEL = 1e5;
@@ -217,6 +221,9 @@ export default class CanvasPainter implements PainterBase {
 
     storage: Storage
 
+    private _htmlHosts: CanvasHTMLHost[] = []
+    private _htmlHostDisposing = false
+
     private _i: CanvasPainterInternal;
 
     private _singleCanvas: boolean
@@ -374,6 +381,10 @@ export default class CanvasPainter implements PainterBase {
         }
 
         const list = this.storage.getDisplayList(true);
+        const htmlHosts = this._htmlHosts.slice();
+        for (let i = 0; i < htmlHosts.length; i++) {
+            htmlHosts[i].prepare(list);
+        }
         this._updateLayerStatus(list, opt.paintAll);
 
         this._redrawId = Math.random();
@@ -705,6 +716,24 @@ export default class CanvasPainter implements PainterBase {
      */
     getLayer(zlevel: ZLevel, virtual?: boolean) {
         return this._ensureLayer(zlevel, 0, virtual);
+    }
+
+    /** @internal Actual Canvas ownership for the M1 native host foundation. */
+    getHTMLHostCanvas(zlevel: number): HTMLCanvasElement {
+        if (this._htmlHostDisposing) {
+            throw createHTMLHostError(HTMLHostErrorCode.DISPOSED, 'Painter is disposing');
+        }
+        const layer = this.getLayer(zlevel);
+        if (this._opts.useDirtyRect || this._needsManuallyCompositing || layer.virtual
+            || !layer.__builtin__ || layer.motionBlur) {
+            throw createHTMLHostError(HTMLHostErrorCode.UNSUPPORTED_SCENE,
+                'M1 native HTML requires a normal Canvas layer without dirty rectangles or motion blur');
+        }
+        return layer.dom;
+    }
+
+    createHTMLHost(zr: ZRenderType, options: HTMLHostOptions) {
+        return createCanvasHTMLHost(this, zr, options, this._htmlHosts);
     }
 
     /**
@@ -1146,6 +1175,10 @@ export default class CanvasPainter implements PainterBase {
     }
 
     clear() {
+        const hosts = this._htmlHosts.slice();
+        for (let i = 0; i < hosts.length; i++) {
+            hosts[i].pause();
+        }
         eachLayer(this._i, function (layer) {
             layer.clear();
             resetLayerDrawCursors(layer);
@@ -1250,7 +1283,7 @@ export default class CanvasPainter implements PainterBase {
                 domRoot.style.width = width + 'px';
                 domRoot.style.height = height + 'px';
 
-                eachLayer(this._i, function (layer) {
+                eachLayer(this._i, (layer) => {
                     layer.resize(width as number, height as number, this.dpr);
                 });
 
@@ -1276,6 +1309,10 @@ export default class CanvasPainter implements PainterBase {
     }
 
     dispose() {
+        this._htmlHostDisposing = true;
+        while (this._htmlHosts.length) {
+            this._htmlHosts[this._htmlHosts.length - 1].dispose();
+        }
         this.root.innerHTML = '';
 
         this.root =
@@ -1291,6 +1328,18 @@ export default class CanvasPainter implements PainterBase {
         backgroundColor?: string | GradientObject | ImagePatternObject
         pixelRatio?: number
     }) {
+        let hasHTML = false;
+        const roots = this.storage.getRoots();
+        const inspect = (el: Displayable) => {
+            hasHTML = hasHTML || el.type === 'html';
+        };
+        for (let i = 0; i < roots.length; i++) {
+            roots[i].traverse(inspect);
+        }
+        if (hasHTML) {
+            throw createHTMLHostError(HTMLHostErrorCode.UNSUPPORTED_EXPORT,
+                'Exporting a scene containing HTML is unsupported');
+        }
         opts = opts || {};
         if (this._singleCanvas && !this._compositeManually) {
             return this._i.layers[CANVAS_ZLEVEL][0].dom;
