@@ -1,0 +1,47 @@
+{
+  "observationDate": "2026-10-19",
+  "browserVersion": "155.0.8059.85",
+  "devicePixelRatio": 2,
+  "scope": "Independent native prototype; not public host or production scene rejection",
+  "drawableOnlyProbe": {
+    "attributes": {
+      "canvas": {
+        "content": "drawable"
+      },
+      "host": {
+        "drawable": ""
+      }
+    },
+    "paint": true,
+    "error": "InvalidStateError: Failed to execute 'drawElementImage' on 'CanvasRenderingContext2D': DrawElementImage requires the canvas to have the layoutsubtree attribute.",
+    "legacyControl": {
+      "paintWithin300ms": false,
+      "conclusion": "Inconclusive timeout; earlier legacy prototype already verified; not classified unsupported"
+    }
+  },
+  "pauseProbe": {
+    "setup": "Focus original native input; set host.inert=true; blur; canvas.clearElementGeometry(host)",
+    "beforeValue": "测试中文",
+    "hitAfterClear": "canvas",
+    "trustedTabTarget": "outside",
+    "typedText": "pause-probe",
+    "afterValue": "测试中文",
+    "newInputEvents": 0,
+    "blurTrusted": true
+  },
+  "nestedDynamicProbe": {
+    "setup": "Append section > input while host is inert; focus dynamic input; then trusted Tab from final toolbar button",
+    "programmaticFocusBlocked": true,
+    "tabTarget": "outside",
+    "tabIndex": 4,
+    "disabled": false,
+    "noFocusRestore": true,
+    "attributesPreserved": true
+  },
+  "limitations": [
+    "Does not validate pending IME suspension or selection",
+    "Does not resolve ordinary graphics occlusion",
+    "Production overlap detection/rejection is not implemented"
+  ],
+  "cleanup": "Removed temporary canvases/dynamic nested node; restored original host inert=false and requested paint"
+}

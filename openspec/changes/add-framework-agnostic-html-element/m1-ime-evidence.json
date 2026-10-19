@@ -1,0 +1,391 @@
+{
+  "observationDate": "2026-10-19",
+  "source": "User confirmed OS input; page report read without synthesizing events",
+  "userFeedback": "已输入",
+  "limitations": [
+    "Candidate window not confirmed",
+    "compositionend isTrusted=false; cause not determined",
+    "report.ime and flags are initial labels, not updated conclusions"
+  ],
+  "report": {
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36",
+    "flags": "未读取浏览器配置；记录运行进程未发现显式 feature 开关，不推断默认设置",
+    "devicePixelRatio": 2,
+    "support": {
+      "featuresPresent": true,
+      "missingCapabilities": [],
+      "features": [
+        "drawElementImage",
+        "paint",
+        "inert"
+      ],
+      "candidate": "layout-subtree",
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36"
+    },
+    "signature": "drawElementImage(element, dx, dy) -> DOMMatrix; CSS transform required",
+    "paintCount": 64,
+    "firstPaintMs": 25.300000000745058,
+    "automaticGeometry": {
+      "rect": {
+        "x": 24,
+        "y": 171.9375,
+        "width": 240,
+        "height": 60,
+        "top": 171.9375,
+        "right": 264,
+        "bottom": 231.9375,
+        "left": 24
+      },
+      "hit": "canvas"
+    },
+    "cssGeometry": null,
+    "ownership": "InvalidStateError: Failed to execute 'drawElementImage' on 'CanvasRenderingContext2D': The element can only be drawn into its nearest ancestor <canvas>.",
+    "inert": null,
+    "events": [
+      {
+        "type": "pointerdown",
+        "trusted": true,
+        "value": "native",
+        "covered": false
+      },
+      {
+        "type": "focus",
+        "trusted": true,
+        "value": "native",
+        "covered": false
+      },
+      {
+        "type": "click",
+        "trusted": true,
+        "value": "native",
+        "covered": false
+      },
+      {
+        "type": "input",
+        "trusted": true,
+        "value": "native ",
+        "covered": false
+      },
+      {
+        "type": "compositionstart",
+        "trusted": true,
+        "value": "native ",
+        "covered": false
+      },
+      {
+        "type": "compositionupdate",
+        "trusted": true,
+        "value": "native ",
+        "covered": false
+      },
+      {
+        "type": "input",
+        "trusted": true,
+        "value": "native c",
+        "covered": false
+      },
+      {
+        "type": "compositionupdate",
+        "trusted": true,
+        "value": "native c",
+        "covered": false
+      },
+      {
+        "type": "input",
+        "trusted": true,
+        "value": "native ce",
+        "covered": false
+      },
+      {
+        "type": "compositionupdate",
+        "trusted": true,
+        "value": "native ce",
+        "covered": false
+      },
+      {
+        "type": "input",
+        "trusted": true,
+        "value": "native ce's",
+        "covered": false
+      },
+      {
+        "type": "compositionupdate",
+        "trusted": true,
+        "value": "native ce's",
+        "covered": false
+      },
+      {
+        "type": "input",
+        "trusted": true,
+        "value": "native ce'sh",
+        "covered": false
+      },
+      {
+        "type": "compositionupdate",
+        "trusted": true,
+        "value": "native ce'sh",
+        "covered": false
+      },
+      {
+        "type": "input",
+        "trusted": true,
+        "value": "native ce'shi",
+        "covered": false
+      },
+      {
+        "type": "compositionupdate",
+        "trusted": true,
+        "value": "native ce'shi",
+        "covered": false
+      },
+      {
+        "type": "input",
+        "trusted": true,
+        "value": "native 测试",
+        "covered": false
+      },
+      {
+        "type": "compositionend",
+        "trusted": false,
+        "value": "native 测试",
+        "covered": false
+      },
+      {
+        "type": "compositionstart",
+        "trusted": true,
+        "value": "native 测试",
+        "covered": false
+      },
+      {
+        "type": "compositionupdate",
+        "trusted": true,
+        "value": "native 测试",
+        "covered": false
+      },
+      {
+        "type": "input",
+        "trusted": true,
+        "value": "native 测试z",
+        "covered": false
+      },
+      {
+        "type": "compositionupdate",
+        "trusted": true,
+        "value": "native 测试z",
+        "covered": false
+      },
+      {
+        "type": "input",
+        "trusted": true,
+        "value": "native 测试zh",
+        "covered": false
+      },
+      {
+        "type": "compositionupdate",
+        "trusted": true,
+        "value": "native 测试zh",
+        "covered": false
+      },
+      {
+        "type": "input",
+        "trusted": true,
+        "value": "native 测试zho",
+        "covered": false
+      },
+      {
+        "type": "compositionupdate",
+        "trusted": true,
+        "value": "native 测试zho",
+        "covered": false
+      },
+      {
+        "type": "input",
+        "trusted": true,
+        "value": "native 测试zho'g",
+        "covered": false
+      },
+      {
+        "type": "compositionupdate",
+        "trusted": true,
+        "value": "native 测试zho'g",
+        "covered": false
+      },
+      {
+        "type": "input",
+        "trusted": true,
+        "value": "native 测试zhogn",
+        "covered": false
+      },
+      {
+        "type": "compositionupdate",
+        "trusted": true,
+        "value": "native 测试zhogn",
+        "covered": false
+      },
+      {
+        "type": "input",
+        "trusted": true,
+        "value": "native 测试zhogn'w",
+        "covered": false
+      },
+      {
+        "type": "compositionupdate",
+        "trusted": true,
+        "value": "native 测试zhogn'w",
+        "covered": false
+      },
+      {
+        "type": "input",
+        "trusted": true,
+        "value": "native 测试zhogn'we",
+        "covered": false
+      },
+      {
+        "type": "compositionupdate",
+        "trusted": true,
+        "value": "native 测试zhogn'we",
+        "covered": false
+      },
+      {
+        "type": "input",
+        "trusted": true,
+        "value": "native 测试zhogn'wen",
+        "covered": false
+      },
+      {
+        "type": "compositionupdate",
+        "trusted": true,
+        "value": "native 测试zhogn'wen",
+        "covered": false
+      },
+      {
+        "type": "input",
+        "trusted": true,
+        "value": "native 测试中文",
+        "covered": false
+      },
+      {
+        "type": "compositionend",
+        "trusted": false,
+        "value": "native 测试中文",
+        "covered": false
+      },
+      {
+        "type": "pointerdown",
+        "trusted": true,
+        "value": "native 测试中文",
+        "covered": false
+      },
+      {
+        "type": "click",
+        "trusted": true,
+        "value": "native 测试中文",
+        "covered": false
+      },
+      {
+        "type": "pointerdown",
+        "trusted": true,
+        "value": "native 测试中文",
+        "covered": false
+      },
+      {
+        "type": "click",
+        "trusted": true,
+        "value": "native 测试中文",
+        "covered": false
+      },
+      {
+        "type": "pointerdown",
+        "trusted": true,
+        "value": "native 测试中文",
+        "covered": false
+      },
+      {
+        "type": "click",
+        "trusted": true,
+        "value": "native 测试中文",
+        "covered": false
+      },
+      {
+        "type": "input",
+        "trusted": true,
+        "value": "测试中文",
+        "covered": false
+      },
+      {
+        "type": "pointerdown",
+        "trusted": true,
+        "value": "测试中文",
+        "covered": false
+      },
+      {
+        "type": "pointerdown",
+        "trusted": true,
+        "value": "测试中文",
+        "covered": false
+      },
+      {
+        "type": "click",
+        "trusted": true,
+        "value": "测试中文",
+        "covered": false
+      },
+      {
+        "type": "change",
+        "trusted": true,
+        "value": "测试中文",
+        "covered": false
+      },
+      {
+        "type": "blur",
+        "trusted": true,
+        "value": "测试中文",
+        "covered": false
+      }
+    ],
+    "errors": [],
+    "ime": "未验证；必须使用真实 OS 输入法，不以 typeText/dispatchEvent 代替",
+    "changedElementsPresent": true,
+    "covered": false,
+    "pixel": [
+      0,
+      128,
+      0,
+      255
+    ],
+    "hit": "native-input",
+    "version": {
+      "brands": [
+        {
+          "brand": "Google Chrome",
+          "version": "155"
+        },
+        {
+          "brand": "Chromium",
+          "version": "155"
+        },
+        {
+          "brand": "Not(A:Brand",
+          "version": "24"
+        }
+      ],
+      "fullVersionList": [
+        {
+          "brand": "Google Chrome",
+          "version": "155.0.8059.85"
+        },
+        {
+          "brand": "Chromium",
+          "version": "155.0.8059.85"
+        },
+        {
+          "brand": "Not(A:Brand",
+          "version": "24.0.0.0"
+        }
+      ],
+      "mobile": false,
+      "platform": "Windows",
+      "platformVersion": "19.0.0"
+    }
+  }
+}

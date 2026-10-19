@@ -1,0 +1,144 @@
+{
+  "observationDate": "2026-10-19",
+  "browserVersion": "155.0.8059.85",
+  "flagsReference": "m1-browser-config.json",
+  "report": {
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36",
+    "cases": [
+      {
+        "direct": true,
+        "dpr": 1,
+        "checks": {
+          "mountBeforeReady": true,
+          "nativeOwnership": true,
+          "cssGeometry": true,
+          "initialHeight": true,
+          "nativePixels": true,
+          "contentResize": true,
+          "hidden": true,
+          "noFocusRestore": true,
+          "removed": true,
+          "readded": true,
+          "explicitSize": true,
+          "overlapRejected": true,
+          "moveRecovers": true,
+          "backgroundAllowed": true,
+          "exportRejected": true,
+          "ignoredExportRejected": true,
+          "cleared": true,
+          "identityAfterClear": true,
+          "disposed": true,
+          "noResurrection": true,
+          "noSceneResurrection": true,
+          "ordinaryExportRestored": true,
+          "emptyReady": true,
+          "ownerDispose": true,
+          "noSyntheticBusinessEvents": true
+        },
+        "errors": [
+          "HTML_UNSUPPORTED_SCENE"
+        ],
+        "businessEvents": [],
+        "passed": true
+      },
+      {
+        "direct": false,
+        "dpr": 2,
+        "checks": {
+          "mountBeforeReady": true,
+          "nativeOwnership": true,
+          "cssGeometry": true,
+          "initialHeight": true,
+          "nativePixels": true,
+          "contentResize": true,
+          "hidden": true,
+          "noFocusRestore": true,
+          "removed": true,
+          "readded": true,
+          "explicitSize": true,
+          "overlapRejected": true,
+          "moveRecovers": true,
+          "backgroundAllowed": true,
+          "exportRejected": true,
+          "ignoredExportRejected": true,
+          "cleared": true,
+          "identityAfterClear": true,
+          "disposed": true,
+          "noResurrection": true,
+          "noSceneResurrection": true,
+          "ordinaryExportRestored": true,
+          "emptyReady": true,
+          "ownerDispose": true,
+          "noSyntheticBusinessEvents": true
+        },
+        "errors": [
+          "HTML_UNSUPPORTED_SCENE"
+        ],
+        "businessEvents": [],
+        "passed": true
+      }
+    ],
+    "passed": true
+  },
+  "trustedInput": {
+    "value": "application-owned-public",
+    "events": [
+      {
+        "type": "focus",
+        "trusted": true,
+        "value": "application-owned"
+      },
+      {
+        "type": "input",
+        "trusted": true,
+        "value": "application-owned-"
+      },
+      {
+        "type": "input",
+        "trusted": true,
+        "value": "application-owned-p"
+      },
+      {
+        "type": "input",
+        "trusted": true,
+        "value": "application-owned-pu"
+      },
+      {
+        "type": "input",
+        "trusted": true,
+        "value": "application-owned-pub"
+      },
+      {
+        "type": "input",
+        "trusted": true,
+        "value": "application-owned-publ"
+      },
+      {
+        "type": "input",
+        "trusted": true,
+        "value": "application-owned-publi"
+      },
+      {
+        "type": "input",
+        "trusted": true,
+        "value": "application-owned-public"
+      },
+      {
+        "type": "change",
+        "trusted": true,
+        "value": "application-owned-public"
+      },
+      {
+        "type": "blur",
+        "trusted": true,
+        "value": "application-owned-public"
+      }
+    ],
+    "errors": [],
+    "state": "active"
+  },
+  "limitations": [
+    "Only direct Canvas/DPR1 and container/DPR2 tested",
+    "IME: candidate window unconfirmed; compositionend isTrusted=false; see m1-ime-evidence.json"
+  ]
+}

@@ -1,0 +1,93 @@
+{
+  "observationDate": "2026-10-19",
+  "automated": {
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36",
+    "devicePixelRatio": 2,
+    "canvasPixelRatio": 1,
+    "scope": "Independent prototype; not public createHTMLHost or Painter integration",
+    "state": "active",
+    "transitions": [
+      "active",
+      "suspended",
+      "pending",
+      "active",
+      "suspended",
+      "pending",
+      "active",
+      "suspended",
+      "pending",
+      "active",
+      "suspended",
+      "pending",
+      "active"
+    ],
+    "events": [
+      {
+        "type": "focus",
+        "trusted": true,
+        "value": "retained"
+      },
+      {
+        "type": "blur",
+        "trusted": true,
+        "value": "retained"
+      }
+    ],
+    "checks": {
+      "initialFocus": true,
+      "rejected": true,
+      "hitRevoked": true,
+      "focusBlocked": true,
+      "move": true,
+      "moveRejectedAgain": true,
+      "behind": true,
+      "behindRejectedAgain": true,
+      "hide": true,
+      "hideRejectedAgain": true
+    },
+    "error": null,
+    "inert": false,
+    "value": "retained",
+    "hit": "native-input",
+    "passed": true
+  },
+  "trustedKeyboard": {
+    "state": "suspended",
+    "error": {
+      "code": "HTML_UNSUPPORTED_SCENE",
+      "message": "[HTML_UNSUPPORTED_SCENE] Foreground paint bounds overlap native HTML; native occlusion hit testing is unsupported",
+      "context": {
+        "hostId": 2311,
+        "targetId": 2312,
+        "failedOperation": "validateScene"
+      }
+    },
+    "active": "outside",
+    "inputValue": "retained",
+    "outsideValue": "rejection-probe",
+    "events": [
+      {
+        "type": "focus",
+        "trusted": true,
+        "value": "retained"
+      },
+      {
+        "type": "blur",
+        "trusted": true,
+        "value": "retained"
+      }
+    ],
+    "hit": "canvas"
+  },
+  "procedure": [
+    "Run npm run build:lib; serve repository root with dependencies installed",
+    "Open test/html-scene-admission.html; run scene changes check",
+    "Click overlap button; press Tab five times; type rejection-probe",
+    "Original input retains value; target is outside; no added business input events"
+  ],
+  "limitations": [
+    "Independent HTML draw loop uses real Storage/Rect/brush but not public HTML element or CanvasPainter",
+    "Canvas backing-store ratio=1 with window DPR=2; not DPR 1/2 backend acceptance",
+    "Conservative paint AABB policy can reject geometrically separated pixels; no arbitrary clip or compositing"
+  ]
+}

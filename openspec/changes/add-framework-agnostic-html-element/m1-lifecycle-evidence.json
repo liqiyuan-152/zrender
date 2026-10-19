@@ -1,0 +1,36 @@
+{
+  "observationDate": "2026-10-19",
+  "scope": "Renderer-neutral DOM lifecycle, not Canvas/SVG scene integration",
+  "report": {
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36",
+    "devicePixelRatio": 2,
+    "checks": {
+      "contentHeight": true,
+      "contentResize": true,
+      "explicitSize": true,
+      "inert": true,
+      "noFocusRestore": true,
+      "attributesPreserved": true,
+      "removed": true,
+      "identity": true,
+      "disposed": true,
+      "noLateInvalidation": true,
+      "noResurrection": true
+    },
+    "measurements": [
+      {
+        "width": 240,
+        "height": 40
+      },
+      {
+        "width": 240,
+        "height": 60
+      },
+      {
+        "width": 300,
+        "height": 80
+      }
+    ],
+    "passed": true
+  }
+}

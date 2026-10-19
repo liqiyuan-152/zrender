@@ -1,0 +1,10 @@
+{
+  "enabledLabsExperiments": [
+    "canvas-draw-element@1"
+  ],
+  "source": "Chrome default profile Local State/browser.enabled_labs_experiments",
+  "observationDate": "2026-10-19",
+  "browserVersion": "155.0.8059.85",
+  "explicitUserDataDirs": [],
+  "explicitFeatureFlags": []
+}
