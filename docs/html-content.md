@@ -60,18 +60,23 @@ export function mount(container: HTMLElement) {
 
 ## 能力与诊断
 
-checkHTMLCanvasSupport(document?) 无 DOM 时安全返回缺失 DOM。featuresPresent 仅初筛特征，candidate 为 drawable/layout-subtree/unknown，不证明快照、签名或交互行为。工厂还进行异步绘制探测，并通过 UA Client Hints 完整版本校验；仅准入下表已验证的 Windows Google Chrome 精确版本，其他版本即使方法存在也拒绝。
+**兼容性规则（2026-10-20）：** 不设浏览器版本号、品牌或操作系统白名单，也不要求 UA / UA Client Hints 版本信息。是否启用 HTML in Canvas 仅由实际原生接口、接口签名及初始化调用结果决定。浏览器版本只用于记录验证环境，不作为运行条件。不支持的接口分支和调用失败仍须明确诊断，不能仅凭版本号认定兼容，也不能因版本未经测试而直接拒绝。
+
+checkHTMLCanvasSupport(document?) 无 DOM 时安全返回缺失 DOM。featuresPresent 仅初筛特征，candidate 为 drawable/layout-subtree/unknown，不证明快照或交互行为。工厂等待原生 paint，实际调用 drawElementImage，并验证返回有限二维 DOMMatrix、CSS 矩阵应用及几何注册/清除调用。准入不再依赖操作系统和 Chrome 精确版本；不兼容签名仍明确拒绝。运行时探测不等于所有浏览器组合均已完成交互验收。
 
 诊断为原生 Error，name=HTMLHostError，消息为 [CODE] message，带 code/context。hostId/targetId 保留数值或字符串，failedOperation 标记操作。导出 HTMLHostErrorCode 和 createHTMLHostError。
 
 ## 浏览器与首版边界
 
+下表的具体浏览器版本为历史验证环境，不是版本准入清单。
+
 | 环境/组合 | M1 结果或策略 | 诊断 |
 | --- | --- | --- |
 | Windows Chrome 155.0.8059.85，canvas-draw-element@1 | 已验证 layoutsubtree 旧接口，返回 DOMMatrix；显式 CSS 矩阵和几何注册 | 不承诺其他版本行为相同 |
+| macOS Chrome，启用 canvas-draw-element | 2026-10-19 本机实测示例编辑保存、移动、隐藏恢复；公共用例 DPR 1/2 各 25 项检查通过，含真实像素、命中、重排和释放 | 按原生接口探测准入；未验证真实 OS 中文输入法 |
 | 直接 Canvas/DPR 1、容器初始化/DPR 2 | 公共用例验证像素、基本命中、生命周期；旧接口 snapshot 已含 DPR，避免再次放大 | 完整父变换和重排版本仍待 M3 |
 | content=drawable 当前提案分支 | 收到 paint，但绘制报错要求 layoutsubtree，未启用此分支 | CAPABILITY_MISSING |
-| Firefox/Safari/Edge | 未运行，不从 Chrome 推断支持 | 未准入 |
+| Firefox/Safari/Edge | 未运行，不从 Chrome 推断支持 | 缺接口或签名不兼容时拒绝 |
 | 缺 DOM、native inert 或实验 API | 拒绝 HTML，普通图元不受影响 | CAPABILITY_MISSING |
 | SVG HTML / SSR HTML | M4 实施；当前不创建宿主，普通 SVG/SSR 入口保留 | CAPABILITY_MISSING |
 | 前景 paint AABB 与 HTML 相交 | 绘制/提交几何前拒绝并暂停，移开/隐藏/改为背景后恢复 | UNSUPPORTED_SCENE |
@@ -79,6 +84,8 @@ checkHTMLCanvasSupport(document?) 无 DOM 时安全返回缺失 DOM。featuresPr
 | 脏矩形、motionBlur、自定义或虚拟 Canvas 层 | M1 拒绝，M3 再实现/验证重绘策略 | UNSUPPORTED_SCENE |
 | zrender Canvas 导出含 HTML，包括 ignore | 在单 Canvas 快速返回前拒绝；移出后恢复普通导出 | UNSUPPORTED_EXPORT |
 | 原始 Canvas toDataURL/toBlob | 不属于 zrender 拦截范围，不保证 HTML 输出 | 无拦截 |
+
+HTML 宿主内的鼠标、触摸与指针事件由原生控件处理，不再触发底层 zrender 图元事件；控件自身和页面的 DOM 事件冒泡仍保留。从 Canvas 开始的鼠标或指针拖拽可以在 HTML 控件上方继续并结束。存在 HTML 宿主时，仅刷新 hover 也会重新验证场景并重绘普通层，避免暂停后残留旧像素。HTML 绘制与后续图元的 Canvas 样式缓存相互隔离。
 
 原生自动遮挡命中确实失败；当前通过明确限制组合解决，未将浏览器行为改判通过。隐藏后缓存快照失效，恢复必须等待新的 paint。
 

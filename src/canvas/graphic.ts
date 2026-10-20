@@ -561,6 +561,7 @@ const DRAW_TYPE_PATH = 1;
 const DRAW_TYPE_IMAGE = 2;
 const DRAW_TYPE_TEXT = 3;
 const DRAW_TYPE_INCREMENTAL = 4;
+const DRAW_TYPE_HTML = 5;
 
 export type BrushScope = {
     inHover: boolean
@@ -725,6 +726,8 @@ export function brush(
     }
 
     if (el instanceof HTML) {
+        // The next ordinary element must rebind all styles after native drawing.
+        scope.lastDrawType = DRAW_TYPE_HTML;
         ctx.globalAlpha = el.style.opacity == null ? 1 : el.style.opacity;
         ctx.globalCompositeOperation = 'source-over';
         ctx.shadowBlur = ctx.shadowOffsetX = ctx.shadowOffsetY = 0;

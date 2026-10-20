@@ -13,8 +13,8 @@
 
 原生 HTML-in-Canvas 为实验 API。2026-10-19 查阅的 WICG 当前提案使用 content="drawable"、drawable、paint、drawElementImage 及几何同步；旧示例使用 layoutsubtree 且接口签名不同。对话中的演示代码未实测，不直接作为生产实现。
 
-**实验 API 版本管理策略：**  
-系统将记录每个经验证浏览器的精确版本、实验开关名称和支持的接口特征集（drawElementImage、paint 通知、自动几何同步等）。能力检测不仅检查单个方法存在性，还需验证接口签名与调用行为。检测到旧版本接口（如 layoutsubtree）时，若该版本已有独立验证记录，提供显式适配分支；未验证版本明确拒绝并报告所需特征和当前环境缺失项。降级策略不包括自动切换到 SVG、overlay 或截图方案；缺失能力时创建失败，由调用方决定后续路径。版本初筛和局部类型在 src/dom/html/capabilities.ts、src/canvas/html/types.ts；M1 精确版本准入和原生适配在 src/canvas/html/profile.ts、native.ts。
+**实验 API 兼容性策略（2026-10-20 更新）：**
+不设浏览器版本号、品牌或操作系统白名单，不要求 UA Client Hints。浏览器精确版本仅用于验证记录，不作为准入条件。系统按接口特征、签名及实际调用结果选择已实现的适配分支；不同版本只要提供兼容接口即可运行，未经测试的版本不因此被直接拒绝。缺失能力、不兼容签名及初始化失败须明确诊断。降级策略不包括自动切换到 SVG、overlay 或截图方案。能力初筛与局部类型位于 src/dom/html/capabilities.ts、src/canvas/html/types.ts；矩阵校验及原生绘制探测位于 src/canvas/html/profile.ts、native.ts。
 
 工作区已有 src/canvas/Painter.ts 和 dist 修改，本次 M1 实施保留既有改动，并通过 release 更新生成产物。新增手写源码、测试、脚本每文件不超过 500 行，沿用 ES3 编译目标，不能假定编译器补齐运行时 API。
 
@@ -238,4 +238,4 @@ test/html-frameworks/
 
 ### M1 停止条件后的受限路线验收
 
-原生自动遮挡失败未改判通过。独立 scenePolicy 原型先验证限制路线，随后将相同策略接入实际 Painter/brush 和公共工厂，公共入口验证重叠拒绝、恢复、命中撤销及生命周期。隐藏使 native cached paint record 失效，恢复必须等待新 paint。旧接口快照已含 backing pixels，绘制时抵消一次 DPR 缩放并保留物理平移，再以返回矩阵更新 CSS 和原生几何。异步探测与精确版本准入由 native.ts/profile.ts 承担；未验证版本即使方法存在也拒绝。M1 不实现完整布局版本提交、绑定、SVG 或框架兼容。详见 m1-validation.md。
+原生自动遮挡失败未改判通过。独立 scenePolicy 原型先验证限制路线，随后将相同策略接入实际 Painter/brush 和公共工厂，公共入口验证重叠拒绝、恢复、命中撤销及生命周期。隐藏使 native cached paint record 失效，恢复必须等待新 paint。旧接口快照已含 backing pixels，绘制时抵消一次 DPR 缩放并保留物理平移，再以返回矩阵更新 CSS 和原生几何。native.ts/profile.ts 承担原生绘制探测及有限二维矩阵检查，不读取浏览器版本作为准入条件。M1 不实现完整布局版本提交、绑定、SVG 或框架兼容。详见 m1-validation.md。

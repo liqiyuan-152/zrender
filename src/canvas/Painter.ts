@@ -366,8 +366,10 @@ export default class CanvasPainter implements PainterBase {
         else {
             opt = (optOrPaintAll as CanvasPainterRefreshOpt) || {};
         }
-        const refresh = util.retrieve2(opt.refresh, true);
         const refreshHover = util.retrieve2(opt.refreshHover, false);
+        // Hover state changes can introduce unsupported occlusion. Revalidate and
+        // repaint the normal layer as well, so suspended HTML leaves no stale pixels.
+        const refresh = util.retrieve2(opt.refresh, true) || (refreshHover && this._htmlHosts.length > 0);
 
         if (refreshHover) {
             this._hoverLayerDirty = HOVER_LAYER_DIRTY_REPAINT;

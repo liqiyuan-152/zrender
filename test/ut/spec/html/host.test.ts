@@ -50,12 +50,6 @@ describe('public HTML host ownership and cancellation', function () {
         jest.useFakeTimers();
         dom = new JSDOM('<main></main>');
         doc = dom.window.document;
-        Object.defineProperty(dom.window.navigator, 'userAgentData', { configurable: true, value: {
-            platform: 'Windows',
-            getHighEntropyValues: () => Promise.resolve({ fullVersionList: [
-                { brand: 'Google Chrome', version: '155.0.8059.85' }
-            ] })
-        } });
         Object.defineProperty(dom.window.HTMLElement.prototype, 'inert', {
             configurable: true,
             get() { return this.hasAttribute('inert'); },
@@ -69,7 +63,11 @@ describe('public HTML host ownership and cancellation', function () {
         proto.updateElementGeometry = jest.fn();
         proto.getContext = () => ({
             save() {}, restore() {}, setTransform() {}, scale() {},
-            drawElementImage() { return { toFloat64Array(): number[] { return []; }, toString() { return 'matrix(1,0,0,1,0,0)'; } }; }
+            drawElementImage() { return {
+                a: 1, b: 0, c: 0, d: 1, e: 0, f: 0,
+                toFloat64Array(): number[] { return []; },
+                toString() { return 'matrix(1,0,0,1,0,0)'; }
+            }; }
         });
         registerPainter('html-fixture', FixturePainter as any);
         zr = init(doc.querySelector('main'), { renderer: 'html-fixture', ssr: true });
@@ -199,10 +197,37 @@ describe('public HTML host ownership and cancellation', function () {
         host.dispose();
     });
 
-    it('rejects an unverified browser version even when all experimental methods exist', async function () {
-        dom.window.navigator.userAgentData.getHighEntropyValues = () => Promise.resolve({ fullVersionList: [
-            { brand: 'Google Chrome', version: '155.0.0.1' }
-        ] });
+    it.each([
+        ['Windows', 'Google Chrome', '1.0.0.0'],
+        ['macOS', 'Google Chrome', '999.0.0.0'],
+        ['Linux', 'Chromium', '155.0.0.1']
+    ])('does not gate native compatibility on %s %s %s', async function (platform, brand, version) {
+        const readVersion = jest.fn(() => Promise.resolve({ fullVersionList: [{ brand, version }] }));
+        Object.defineProperty(dom.window.navigator, 'userAgentData', { value: {
+            platform, getHighEntropyValues: readVersion
+        } });
+        const host = createHTMLHost(zr, { width: 100, height: 40 });
+        painter.paint();
+        await host.ready;
+        expect(host.state).toBe('active');
+        expect(readVersion).not.toHaveBeenCalled();
+    });
+
+    it('accepts the native matrix interface on macOS without UA Client Hints', async function () {
+        Object.defineProperty(dom.window.navigator, 'platform', { value: 'MacIntel' });
+        Object.defineProperty(dom.window.navigator, 'userAgentData', { value: undefined });
+        const host = createHTMLHost(zr, { width: 100, height: 40 });
+        painter.paint();
+        await host.ready;
+        expect(host.state).toBe('active');
+    });
+
+    it.each([undefined, { toFloat64Array() {}, a: 1, b: 0, c: 0, d: 1, e: NaN, f: 0 },
+        { toFloat64Array() {}, a: 1, b: 0, c: 0, d: 1, e: 0, f: 0, is2D: false }])(
+    'rejects an incompatible native draw result and releases its resources (%p)', async function (result) {
+        const ctx = painter.canvas.getContext('2d') as any;
+        ctx.drawElementImage = () => result;
+        painter.canvas.getContext = () => ctx;
         const host = createHTMLHost(zr, { width: 100, height: 40 });
         const rejected = expect(host.ready).rejects.toMatchObject({ code: 'HTML_CAPABILITY_MISSING' });
         painter.paint();

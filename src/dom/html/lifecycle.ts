@@ -1,4 +1,5 @@
 import { createHTMLHostError, HTMLHostErrorCode } from './diagnostics';
+import { markHTMLHost } from './events';
 
 interface SizeObserver {
     observe(target: Element, options?: { box: string }): void
@@ -66,6 +67,7 @@ export function createHTMLHostLifecycle(
     validateSize(options.width, options.height);
     const doc = parent.ownerDocument;
     const element = doc.createElement('div');
+    markHTMLHost(element, true);
     if (!('inert' in element)) {
         throw createHTMLHostError(HTMLHostErrorCode.CAPABILITY_MISSING,
             'Native inert is required for HTML hosts', { failedOperation: 'create', missingCapabilities: ['inert'] });
@@ -286,6 +288,7 @@ export function createHTMLHostLifecycle(
             if (element.parentNode) {
                 element.parentNode.removeChild(element);
             }
+            markHTMLHost(element, false);
             // The application still owns the descendants and their listeners.
         }
     };

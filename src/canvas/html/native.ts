@@ -1,22 +1,13 @@
-import { createHTMLHostError, HTMLHostErrorCode } from '../../dom/html/diagnostics';
 import { ZRCanvasRenderingContext } from '../../core/types';
-import { verifyHTMLCanvasProfile } from './profile';
+import { HTMLCanvasMatrix, verifyHTMLCanvasMatrix } from './profile';
 
-interface LegacyMatrix {
-    a: number
-    b: number
-    c: number
-    d: number
-    toString(): string
-    toFloat64Array(): unknown
-}
 interface LegacyContext extends CanvasRenderingContext2D {
-    drawElementImage(element: HTMLElement, x: number, y: number): LegacyMatrix
+    drawElementImage(element: HTMLElement, x: number, y: number): HTMLCanvasMatrix
 }
 interface LegacyCanvas extends HTMLCanvasElement {
     requestPaint(): void
     clearElementGeometry(element: HTMLElement): void
-    updateElementGeometry(element: HTMLElement, options: { canvasTransform: LegacyMatrix }): void
+    updateElementGeometry(element: HTMLElement, options: { canvasTransform: HTMLCanvasMatrix }): void
 }
 const canvasOwners: { canvas: HTMLCanvasElement; count: number; hadAttribute: boolean }[] = [];
 
@@ -74,11 +65,7 @@ export class NativeHTMLCanvas {
                     ctx.save();
                     try {
                         ctx.setTransform(1, 0, 0, 1, 0, 0);
-                        const matrix = ctx.drawElementImage(probe, -2, -2);
-                        if (!matrix || typeof matrix.toFloat64Array !== 'function') {
-                            throw createHTMLHostError(HTMLHostErrorCode.CAPABILITY_MISSING,
-                                'Native HTML backend requires the verified matrix-returning legacy interface');
-                        }
+                        const matrix = verifyHTMLCanvasMatrix(ctx.drawElementImage(probe, -2, -2));
                         probe.style.transform = matrix.toString();
                         canvas.updateElementGeometry(probe, { canvasTransform: matrix });
                     }
@@ -88,11 +75,7 @@ export class NativeHTMLCanvas {
                     canvas.clearElementGeometry(probe);
                     probe.parentNode.removeChild(probe);
                     this._probe = null;
-                    verifyHTMLCanvasProfile(canvas.ownerDocument.defaultView.navigator).then(() => {
-                        if (!this._disposed) {
-                            ready();
-                        }
-                    }).catch(failed);
+                    ready();
                     return;
                 }
                 if (this._visible) {
@@ -138,7 +121,7 @@ export class NativeHTMLCanvas {
         // Cancel only the CTM's DPR scale; its translation is already in backing
         // coordinates. The returned matrix then has logical CSS linear terms.
         const dpr = (ctx as ZRCanvasRenderingContext).dpr || 1;
-        let matrix: LegacyMatrix;
+        let matrix: HTMLCanvasMatrix;
         ctx.save();
         try {
             ctx.scale(1 / dpr, 1 / dpr);

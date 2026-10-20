@@ -9,6 +9,12 @@
 ### Requirement: Explicit native capability detection
 系统 MUST 在创建原生 HTML 承载时初筛所需特征，并在 ready 完成前异步验证所需绘制、快照通知和几何同步链路。不支持时 SHALL 返回可识别的错误及所缺能力，不得静默采用截图、overlay 或切换渲染器。普通非 HTML 图元不得受影响。
 
+系统 MUST NOT 使用浏览器版本号、品牌、操作系统或版本验证记录作为准入白名单，MUST NOT 要求 UA Client Hints 版本信息。兼容性 SHALL 由实际接口、签名及初始化调用结果决定；版本信息仅用于记录验证环境。
+
+#### Scenario: Compatible interface on a different browser version
+- **WHEN** 当前浏览器提供兼容的原生接口并通过初始化探测，即使其版本未经验证或版本信息不可用
+- **THEN** 系统允许创建 HTML 承载，不因版本号、品牌或操作系统拒绝
+
 #### Scenario: Unsupported browser
 - **WHEN** 浏览器缺失经验证的原生接口，或实验功能未启用
 - **THEN** 创建 HTML 承载失败并报告原因，已存在的普通 zrender 图形仍能使用

@@ -5242,6 +5242,25 @@
         return Animation;
     }(Eventful));
 
+    function markHTMLHost(element, owned) {
+        if (owned) {
+            element.__zrHTMLHost = true;
+        }
+        else {
+            delete element.__zrHTMLHost;
+        }
+    }
+    function isHTMLHostTarget(target, root) {
+        var node = target;
+        while (node && node !== root) {
+            if (node.__zrHTMLHost) {
+                return true;
+            }
+            node = (node.parentNode || node.host);
+        }
+        return false;
+    }
+
     var TOUCH_CLICK_DELAY = 300;
     var globalEventSupported = env.domSupported;
     var localNativeListenerNames = (function () {
@@ -5425,10 +5444,22 @@
     };
     function mountLocalDOMEventListeners(instance, scope) {
         var domHandlers = scope.domHandlers;
+        function dispatchLocal(nativeEventName, rawEvent) {
+            var event = getNativeEvent(rawEvent);
+            if (isHTMLHostTarget(event.target, instance.dom)) {
+                if (!(instance.__pointerCapturing || instance.__mayPointerCapture)
+                    || !/^(mouse|pointer)(move|up)$/.test(nativeEventName)) {
+                    return false;
+                }
+                event = normalizeEvent(instance.dom, event, true);
+            }
+            domHandlers[nativeEventName].call(instance, event);
+            return true;
+        }
         if (env.pointerEventsSupported) {
             each(localNativeListenerNames.pointer, function (nativeEventName) {
                 mountSingleDOMEventListener(scope, nativeEventName, function (event) {
-                    domHandlers[nativeEventName].call(instance, event);
+                    dispatchLocal(nativeEventName, event);
                 });
             });
         }
@@ -5436,8 +5467,9 @@
             if (env.touchEventsSupported) {
                 each(localNativeListenerNames.touch, function (nativeEventName) {
                     mountSingleDOMEventListener(scope, nativeEventName, function (event) {
-                        domHandlers[nativeEventName].call(instance, event);
-                        setTouchTimer(scope);
+                        if (dispatchLocal(nativeEventName, event)) {
+                            setTouchTimer(scope);
+                        }
                     });
                 });
             }
@@ -5445,7 +5477,7 @@
                 mountSingleDOMEventListener(scope, nativeEventName, function (event) {
                     event = getNativeEvent(event);
                     if (!scope.touching) {
-                        domHandlers[nativeEventName].call(instance, event);
+                        dispatchLocal(nativeEventName, event);
                     }
                 });
             });
@@ -15203,6 +15235,7 @@
     var DRAW_TYPE_IMAGE = 2;
     var DRAW_TYPE_TEXT = 3;
     var DRAW_TYPE_INCREMENTAL = 4;
+    var DRAW_TYPE_HTML = 5;
     function canPathBatch(style) {
         var hasFill = styleHasFill(style);
         var hasStroke = styleHasStroke(style);
@@ -15280,6 +15313,7 @@
             flushPathDrawn(ctx, scope);
         }
         if (el instanceof HTML) {
+            scope.lastDrawType = DRAW_TYPE_HTML;
             ctx.globalAlpha = el.style.opacity == null ? 1 : el.style.opacity;
             ctx.globalCompositeOperation = 'source-over';
             ctx.shadowBlur = ctx.shadowOffsetX = ctx.shadowOffsetY = 0;
@@ -15691,6 +15725,7 @@
         validateSize(options.width, options.height);
         var doc = parent.ownerDocument;
         var element = doc.createElement('div');
+        markHTMLHost(element, true);
         if (!('inert' in element)) {
             throw createHTMLHostError(exports.HTMLHostErrorCode.CAPABILITY_MISSING, 'Native inert is required for HTML hosts', { failedOperation: 'create', missingCapabilities: ['inert'] });
         }
@@ -15896,6 +15931,7 @@
                 if (element.parentNode) {
                     element.parentNode.removeChild(element);
                 }
+                markHTMLHost(element, false);
             }
         };
         syncInteraction();
@@ -15957,21 +15993,20 @@
         }
     }
 
-    function verifyHTMLCanvasProfile(navigator) {
-        var data = navigator.userAgentData;
-        var error = createHTMLHostError(exports.HTMLHostErrorCode.CAPABILITY_MISSING, 'Native HTML M1 is validated only on Windows Google Chrome 155.0.8059.85 with canvas-draw-element enabled');
-        if (!data || data.platform !== 'Windows' || typeof data.getHighEntropyValues !== 'function') {
-            return Promise.reject(error);
-        }
-        return data.getHighEntropyValues(['fullVersionList']).then(function (result) {
-            var versions = result.fullVersionList || [];
-            for (var i = 0; i < versions.length; i++) {
-                if (versions[i].brand === 'Google Chrome' && versions[i].version === '155.0.8059.85') {
-                    return;
-                }
-            }
+    function verifyHTMLCanvasMatrix(value) {
+        var matrix = value;
+        var error = createHTMLHostError(exports.HTMLHostErrorCode.CAPABILITY_MISSING, 'Native HTML backend requires drawElementImage to return a finite 2D DOMMatrix');
+        if (!matrix || matrix.is2D === false || typeof matrix.toFloat64Array !== 'function'
+            || typeof matrix.toString !== 'function') {
             throw error;
-        });
+        }
+        var components = [matrix.a, matrix.b, matrix.c, matrix.d, matrix.e, matrix.f];
+        for (var i = 0; i < components.length; i++) {
+            if (typeof components[i] !== 'number' || !isFinite(components[i])) {
+                throw error;
+            }
+        }
+        return matrix;
     }
 
     var canvasOwners = [];
@@ -16022,10 +16057,7 @@
                         ctx.save();
                         try {
                             ctx.setTransform(1, 0, 0, 1, 0, 0);
-                            var matrix = ctx.drawElementImage(probe, -2, -2);
-                            if (!matrix || typeof matrix.toFloat64Array !== 'function') {
-                                throw createHTMLHostError(exports.HTMLHostErrorCode.CAPABILITY_MISSING, 'Native HTML backend requires the verified matrix-returning legacy interface');
-                            }
+                            var matrix = verifyHTMLCanvasMatrix(ctx.drawElementImage(probe, -2, -2));
                             probe.style.transform = matrix.toString();
                             canvas.updateElementGeometry(probe, { canvasTransform: matrix });
                         }
@@ -16035,11 +16067,7 @@
                         canvas.clearElementGeometry(probe);
                         probe.parentNode.removeChild(probe);
                         _this._probe = null;
-                        verifyHTMLCanvasProfile(canvas.ownerDocument.defaultView.navigator).then(function () {
-                            if (!_this._disposed) {
-                                ready();
-                            }
-                        })["catch"](failed);
+                        ready();
                         return;
                     }
                     if (_this._visible) {
@@ -16507,8 +16535,8 @@
             else {
                 opt = optOrPaintAll || {};
             }
-            var refresh = retrieve2(opt.refresh, true);
             var refreshHover = retrieve2(opt.refreshHover, false);
+            var refresh = retrieve2(opt.refresh, true) || (refreshHover && this._htmlHosts.length > 0);
             if (refreshHover) {
                 this._hoverLayerDirty = HOVER_LAYER_DIRTY_REPAINT;
             }

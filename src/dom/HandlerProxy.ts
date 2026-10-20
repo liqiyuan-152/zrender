@@ -13,6 +13,7 @@ import env from '../core/env';
 import { Dictionary, ZRRawEvent, ZRRawMouseEvent } from '../core/types';
 import { VectorArray } from '../core/vector';
 import Handler from '../Handler';
+import { isHTMLHostTarget } from './html/events';
 
 type DomHandlersMap = Dictionary<(this: HandlerDomProxy, event: ZRRawEvent) => void>
 
@@ -419,6 +420,21 @@ const globalDOMHandlers: DomHandlersMap = {
 function mountLocalDOMEventListeners(instance: HandlerDomProxy, scope: DOMHandlerScope) {
     const domHandlers = scope.domHandlers;
 
+    function dispatchLocal(nativeEventName: string, rawEvent: Event) {
+        let event = getNativeEvent(rawEvent as ZRRawEvent);
+        if (isHTMLHostTarget(event.target, instance.dom)) {
+            // A Canvas drag may end over a native control. Continue that gesture,
+            // but never start Canvas interaction from the HTML subtree.
+            if (!(instance.__pointerCapturing || instance.__mayPointerCapture)
+                || !/^(mouse|pointer)(move|up)$/.test(nativeEventName)) {
+                return false;
+            }
+            event = normalizeEvent(instance.dom, event, true);
+        }
+        domHandlers[nativeEventName].call(instance, event);
+        return true;
+    }
+
     if (env.pointerEventsSupported) { // Only IE11+/Edge
         // 1. On devices that both enable touch and mouse (e.g., MS Surface and lenovo X240),
         // IE11+/Edge do not trigger touch event, but trigger pointer event and mouse event
@@ -429,7 +445,7 @@ function mountLocalDOMEventListeners(instance: HandlerDomProxy, scope: DOMHandle
         zrUtil.each(localNativeListenerNames.pointer, function (nativeEventName) {
             mountSingleDOMEventListener(scope, nativeEventName, function (event) {
                 // markTriggeredFromLocal(event);
-                domHandlers[nativeEventName].call(instance, event);
+                dispatchLocal(nativeEventName, event);
             });
         });
 
@@ -453,8 +469,9 @@ function mountLocalDOMEventListeners(instance: HandlerDomProxy, scope: DOMHandle
             zrUtil.each(localNativeListenerNames.touch, function (nativeEventName) {
                 mountSingleDOMEventListener(scope, nativeEventName, function (event) {
                     // markTriggeredFromLocal(event);
-                    domHandlers[nativeEventName].call(instance, event);
-                    setTouchTimer(scope);
+                    if (dispatchLocal(nativeEventName, event)) {
+                        setTouchTimer(scope);
+                    }
                 });
             });
             // Handler of 'mouseout' event is needed in touch mode, which will be mounted below.
@@ -471,7 +488,7 @@ function mountLocalDOMEventListeners(instance: HandlerDomProxy, scope: DOMHandle
                 event = getNativeEvent(event);
                 if (!scope.touching) {
                     // markTriggeredFromLocal(event);
-                    domHandlers[nativeEventName].call(instance, event);
+                    dispatchLocal(nativeEventName, event);
                 }
             });
         });
