@@ -1,0 +1,8 @@
+{
+  "name": "zrender-html-in-canvas-example",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "npm --prefix ../.. run build:bundle && node server.mjs"
+  }
+}

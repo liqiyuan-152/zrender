@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Plan Studio · HTML in Canvas</title>
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" href="/examples/html-in-canvas/style.css">
+</head>
+<body>
+    <header><a href="/">◈ PLAN STUDIO</a><span>工作空间 / 产品设计</span><b>HTML in Canvas 示例</b></header>
+    <main>
+        <div class="intro"><div><small>PROJECT WORKSPACE</small><h1>让计划，更进一步。</h1>
+            <p>在画布中查看项目，用原生表单更新下一步。</p></div><span class="tag">2026 · 秋季计划</span></div>
+        <div class="toolbar"><span>项目概览</span><div><span id="status" role="status">正在连接编辑器…</span>
+            <button id="toggle" disabled>收起编辑器</button><button id="move" disabled>移动编辑器</button></div></div>
+        <div class="viewport"><div id="scene" aria-label="项目计划画布"></div></div>
+        <aside id="notice" hidden role="status"></aside>
+        <footer><span>Canvas 项目视图 + HTML 原生编辑器</span><span id="saved" aria-live="polite">更改保存在当前页面</span></footer>
+    </main>
+    <script src="/dist/zrender.js"></script>
+    <script type="module" src="/examples/html-in-canvas/app.js"></script>
+</body>
+</html>
